@@ -1,0 +1,807 @@
+<title>D4DAT Financial Monitoring</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    /* palette */
+    --bg:          #edf2ef;
+    --surface:     #ffffff;
+    --surface-2:   #f4f8f6;
+    --border:      #d9e5e0;
+    --text-pri:    #182a1f;
+    --text-sec:    #3d5a47;
+    --text-muted:  #7a9a85;
+
+    /* header */
+    --hdr-bg:      #0f3028;
+    --hdr-text:    #e8f5f0;
+    --hdr-sub:     #7ecfb8;
+    --badge-bg:    #e07c2a;
+    --badge-text:  #ffffff;
+
+    /* KPI accents */
+    --c-blue:   #0369a1;
+    --c-violet: #7c3aed;
+    --c-green:  #059669;
+    --c-amber:  #d97706;
+    --c-red:    #dc2626;
+
+    /* semantic state */
+    --ok-bg:   #d1fae5; --ok-fg:   #065f46;
+    --warn-bg: #fef3c7; --warn-fg: #92400e;
+    --high-bg: #ffedd5; --high-fg: #9a3412;
+    --over-bg: #dc2626; --over-fg: #fff;
+    --row-err: #fff5f5;
+
+    /* chart */
+    --bar-budget:  rgba(134,239,172,.85);
+    --bar-actuals: rgba(4,120,87,.9);
+    --bar-commits: rgba(251,146,60,.85);
+
+    /* status */
+    --status-bg:  #fffbeb;
+    --status-bdr: #f59e0b;
+    --status-txt: #78350f;
+
+    /* filter */
+    --chip-bg:      #e2ede8;
+    --chip-active:  #0f3028;
+    --chip-act-txt: #ffffff;
+    --chip-hover:   #c4d9d0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:         #0b1a13;
+      --surface:    #132118;
+      --surface-2:  #0e1d15;
+      --border:     #1e3828;
+      --text-pri:   #e8f5f0;
+      --text-sec:   #9dc4b0;
+      --text-muted: #5a8a6e;
+      --hdr-bg:     #071410;
+      --bar-budget:  rgba(74,222,128,.7);
+      --bar-actuals: rgba(16,185,129,.9);
+      --bar-commits: rgba(251,146,60,.85);
+      --status-bg:  #2a1800;
+      --status-bdr: #d97706;
+      --status-txt: #fde68a;
+      --chip-bg:      #1e3828;
+      --chip-hover:   #2a4a38;
+      --chip-active:  #4ade80;
+      --chip-act-txt: #071410;
+      --row-err:    #2a0808;
+      --ok-bg: #064e3b; --ok-fg: #6ee7b7;
+      --warn-bg: #451a03; --warn-fg: #fde68a;
+      --high-bg: #431407; --high-fg: #fdba74;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:         #0b1a13;
+    --surface:    #132118;
+    --surface-2:  #0e1d15;
+    --border:     #1e3828;
+    --text-pri:   #e8f5f0;
+    --text-sec:   #9dc4b0;
+    --text-muted: #5a8a6e;
+    --hdr-bg:     #071410;
+    --bar-budget:  rgba(74,222,128,.7);
+    --bar-actuals: rgba(16,185,129,.9);
+    --bar-commits: rgba(251,146,60,.85);
+    --status-bg:  #2a1800;
+    --status-bdr: #d97706;
+    --status-txt: #fde68a;
+    --chip-bg:      #1e3828;
+    --chip-hover:   #2a4a38;
+    --chip-active:  #4ade80;
+    --chip-act-txt: #071410;
+    --row-err:    #2a0808;
+    --ok-bg: #064e3b; --ok-fg: #6ee7b7;
+    --warn-bg: #451a03; --warn-fg: #fde68a;
+    --high-bg: #431407; --high-fg: #fdba74;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { height: 100%; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-pri);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    background: var(--hdr-bg);
+    padding: 20px 28px 18px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .hdr-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--hdr-text);
+    letter-spacing: -0.3px;
+  }
+
+  .hdr-sub {
+    margin-top: 5px;
+    font-size: 11.5px;
+    color: var(--hdr-sub);
+    letter-spacing: 0.01em;
+  }
+
+  .hdr-badge {
+    background: var(--badge-bg);
+    color: var(--badge-text);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 6px;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.45;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-lbl {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .chips {
+    display: flex;
+    gap: 4px;
+  }
+
+  .chip {
+    background: var(--chip-bg);
+    color: var(--text-sec);
+    border: none;
+    padding: 4px 11px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s, color .12s;
+    letter-spacing: 0.01em;
+  }
+
+  .chip:hover { background: var(--chip-hover); }
+
+  .chip.active {
+    background: var(--chip-active);
+    color: var(--chip-act-txt);
+  }
+
+  .filter-sep {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .run-info {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* ── BODY ── */
+  .db-body { padding: 12px 20px; flex: 1; }
+
+  /* ── KPI TILES ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 15px 17px;
+    border-top: 4px solid var(--ka);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .kpi-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--ka);
+    margin-bottom: 7px;
+  }
+
+  .kpi-val {
+    font-size: 23px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--ka);
+    line-height: 1;
+    margin-bottom: 5px;
+  }
+
+  .kpi-sub { font-size: 10.5px; color: var(--text-muted); }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 14px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+
+  .panel-ttl {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-pri);
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── BAR CHART ── */
+  .chart-wrap { position: relative; height: 230px; }
+
+  .chart-leg {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    margin-top: 11px;
+    font-size: 11px;
+    color: var(--text-sec);
+    flex-wrap: wrap;
+  }
+
+  .leg-item { display: flex; align-items: center; gap: 5px; }
+
+  .leg-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── BURN RATE ── */
+  .burn-flex { display: flex; align-items: center; gap: 20px; }
+
+  .donut-wrap { position: relative; width: 124px; height: 124px; flex-shrink: 0; }
+
+  .donut-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+
+  .donut-pct { font-size: 21px; font-weight: 800; color: var(--c-red); line-height: 1; }
+  .donut-lbl { font-size: 9.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+  .burn-stats { display: flex; flex-direction: column; gap: 11px; }
+
+  .bs-val { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .bs-lbl { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .data-table thead tr { background: var(--hdr-bg); }
+
+  .data-table thead th {
+    padding: 8px 9px;
+    color: #d4f0e8;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .data-table thead th:first-child { text-align: left; }
+
+  .data-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .data-table tbody tr:hover { background: var(--surface-2); }
+  .data-table tbody tr.row-err { background: var(--row-err); }
+  .data-table tbody tr.row-hidden { display: none; }
+
+  .data-table td { padding: 7px 9px; text-align: right; color: var(--text-sec); white-space: nowrap; }
+  .data-table td:first-child { text-align: left; color: var(--text-pri); font-weight: 500; }
+
+  .data-table tfoot td {
+    padding: 8px 9px; text-align: right;
+    font-weight: 700; font-size: 11.5px;
+    border-top: 2px solid var(--border);
+    color: var(--text-pri); white-space: nowrap;
+  }
+  .data-table tfoot td:first-child { text-align: left; }
+
+  .pct {
+    display: inline-block; padding: 2px 6px;
+    border-radius: 4px; font-size: 10px; font-weight: 700;
+  }
+  .p-ok   { background: var(--ok-bg);   color: var(--ok-fg); }
+  .p-warn { background: var(--warn-bg); color: var(--warn-fg); }
+  .p-high { background: var(--high-bg); color: var(--high-fg); }
+  .p-over { background: var(--over-bg); color: var(--over-fg); }
+
+  .val-red { color: var(--c-red); font-weight: 700; }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    background: var(--status-bg);
+    border-top: 3px solid var(--status-bdr);
+    padding: 9px 24px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--status-txt);
+    row-gap: 4px;
+  }
+
+  .s-src { font-weight: 600; }
+
+  .s-alerts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+  .s-alert { display: flex; align-items: center; gap: 4px; font-weight: 500; }
+  .s-alert::before { content: '⚠'; font-size: 11px; }
+
+  .s-right { font-weight: 600; white-space: nowrap; }
+
+  .tbl-note { font-size: 10px; color: var(--text-muted); margin-top: 8px; font-style: italic; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 580px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .db-body { padding: 12px 14px; }
+    .hdr { flex-direction: column; padding: 16px; }
+    .filter-bar { padding: 10px 14px; gap: 12px; }
+    .kpi-val { font-size: 20px; }
+    .status-bar { flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px 14px; }
+  }
+</style>
+
+<!-- ░░ HEADER ░░ -->
+<header class="hdr">
+  <div>
+    <div class="hdr-title">Financial Monitoring &amp; Burn Rate</div>
+    <div class="hdr-sub">
+      UNJP/URT/167/UNJ &nbsp;·&nbsp; Data for Digital Agriculture Transformation (D4DAT)
+      &nbsp;·&nbsp; TF5C35TZ24481 &nbsp;·&nbsp; FAO Trust Fund
+    </div>
+  </div>
+  <div class="hdr-badge">FI 102<br>September 2026</div>
+</header>
+
+<!-- ░░ FILTER BAR ░░ -->
+<div class="filter-bar">
+  <div class="filter-group">
+    <span class="filter-lbl">Period</span>
+    <div class="chips" role="group" aria-label="Reporting period">
+      <button class="chip active" data-period="full">Full Period</button>
+      <button class="chip" data-period="2026">FY 2026</button>
+      <button class="chip" data-period="2025">FY 2025</button>
+    </div>
+  </div>
+  <div class="filter-sep" aria-hidden="true"></div>
+  <div class="filter-group">
+    <span class="filter-lbl">Items</span>
+    <div class="chips" role="group" aria-label="Category filter">
+      <button class="chip active" data-items="all">All</button>
+      <button class="chip" data-items="overbudget">Over Budget</button>
+      <button class="chip" data-items="highburn">High Burn (&gt;70%)</button>
+    </div>
+  </div>
+  <div class="filter-sep" aria-hidden="true"></div>
+  <div class="filter-group">
+    <span class="filter-lbl">Chart</span>
+    <div class="chips" role="group" aria-label="Chart view">
+      <button class="chip active" data-chart="all">All Series</button>
+      <button class="chip" data-chart="actuals">Actuals Only</button>
+      <button class="chip" data-chart="exposure">Total Exposure</button>
+    </div>
+  </div>
+  <div class="run-info" id="periodInfo">Run: 22-Sep-2026 &nbsp;·&nbsp; Period: Nov 1997 – Dec 2030</div>
+</div>
+
+<!-- ░░ DASHBOARD BODY ░░ -->
+<div class="db-body">
+
+  <!-- KPI TILES -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--ka: var(--c-blue)">
+      <div class="kpi-lbl">Total Budget</div>
+      <div class="kpi-val">$950,017</div>
+      <div class="kpi-sub">Approved allocation</div>
+    </div>
+    <div class="kpi-card" style="--ka: var(--c-violet)">
+      <div class="kpi-lbl">Funds Received</div>
+      <div class="kpi-val">$593,696</div>
+      <div class="kpi-sub">Contributions received</div>
+    </div>
+    <div class="kpi-card" style="--ka: var(--c-green)">
+      <div class="kpi-lbl">Total Actuals</div>
+      <div class="kpi-val">$262,104</div>
+      <div class="kpi-sub">Expenditure to date</div>
+    </div>
+    <div class="kpi-card" style="--ka: var(--c-amber)">
+      <div class="kpi-lbl">Total Commitments</div>
+      <div class="kpi-val">$137,120</div>
+      <div class="kpi-sub">Soft $90,121 · Hard $46,999</div>
+    </div>
+    <div class="kpi-card" style="--ka: var(--c-red)">
+      <div class="kpi-lbl">Burn Rate</div>
+      <div class="kpi-val">27.6%</div>
+      <div class="kpi-sub">Actuals / Total Budget</div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-grid">
+
+    <!-- LEFT: BAR CHART -->
+    <div class="panel">
+      <div class="panel-ttl">Budget Allocation vs Actuals by Category (USD)</div>
+      <div class="chart-wrap">
+        <canvas id="barChart"></canvas>
+      </div>
+      <div class="chart-leg" id="chartLeg">
+        <div class="leg-item"><div class="leg-dot" style="background:rgba(74,222,128,.85)"></div>Budget</div>
+        <div class="leg-item"><div class="leg-dot" style="background:rgba(4,120,87,.9)"></div>Actuals</div>
+        <div class="leg-item"><div class="leg-dot" style="background:rgba(251,146,60,.85)"></div>Commitments</div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- BURN RATE PANEL -->
+      <div class="panel">
+        <div class="panel-ttl">Burn Rate &amp; Delivery Analysis</div>
+        <div class="burn-flex">
+          <div class="donut-wrap">
+            <canvas id="donutChart"></canvas>
+            <div class="donut-center">
+              <div class="donut-pct">27.6%</div>
+              <div class="donut-lbl">burned</div>
+            </div>
+          </div>
+          <div class="burn-stats">
+            <div>
+              <div class="bs-val" style="color:var(--c-blue)">$262,104 / $950,017</div>
+              <div class="bs-lbl">Actuals / Total Budget</div>
+            </div>
+            <div>
+              <div class="bs-val" style="color:var(--c-amber)">$399,224</div>
+              <div class="bs-lbl">Commitments &amp; Actuals</div>
+            </div>
+            <div>
+              <div class="bs-val" style="color:var(--c-green)">$550,793</div>
+              <div class="bs-lbl">Available Budget</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINE ITEM TABLE -->
+      <div class="panel" style="padding:18px 14px 14px">
+        <div class="panel-ttl" style="margin:0 4px 14px">Budget Summary by Line Item</div>
+        <div class="tbl-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Line Item</th>
+                <th>Budget ($)</th>
+                <th>Actuals ($)</th>
+                <th>Commits ($)</th>
+                <th>Burn %</th>
+                <th>Available ($)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-body">
+              <!--
+                data-burn: numeric burn rate (999 = unbudgeted)
+                data-flag: "over" | "highburn" | ""
+              -->
+              <tr data-burn="91.7" data-flag="highburn">
+                <td>Consultants</td>
+                <td>89,636</td><td>82,180</td><td>5,612</td>
+                <td><span class="pct p-high">91.7%</span></td>
+                <td>1,844</td>
+              </tr>
+              <tr data-burn="0" data-flag="">
+                <td>Contracts</td>
+                <td>452,248</td><td>0</td><td>90,000</td>
+                <td><span class="pct p-ok">0%</span></td>
+                <td>362,248</td>
+              </tr>
+              <tr data-burn="70.5" data-flag="highburn">
+                <td>Travel</td>
+                <td>134,866</td><td>95,127</td><td>2,165</td>
+                <td><span class="pct p-warn">70.5%</span></td>
+                <td>37,574</td>
+              </tr>
+              <tr data-burn="651" data-flag="over" class="row-err">
+                <td class="val-red">Training ⚠</td>
+                <td>2,215</td><td>14,420</td><td>0</td>
+                <td><span class="pct p-over">651%</span></td>
+                <td class="val-red">(12,205)</td>
+              </tr>
+              <tr data-burn="8.7" data-flag="">
+                <td>Expendable Proc.</td>
+                <td>78,832</td><td>6,890</td><td>4,576</td>
+                <td><span class="pct p-ok">8.7%</span></td>
+                <td>67,366</td>
+              </tr>
+              <tr data-burn="0" data-flag="over" class="row-err">
+                <td class="val-red">Non-Exp. Equip. ⚠</td>
+                <td>12,352</td><td>0</td><td>34,646</td>
+                <td><span class="pct p-ok">0%</span></td>
+                <td class="val-red">(22,294)*</td>
+              </tr>
+              <tr data-burn="25.1" data-flag="">
+                <td>Tech. Support Svcs</td>
+                <td>44,128</td><td>11,057</td><td>0</td>
+                <td><span class="pct p-ok">25.1%</span></td>
+                <td>33,071</td>
+              </tr>
+              <tr data-burn="23.1" data-flag="">
+                <td>General Operating</td>
+                <td>50,539</td><td>11,662</td><td>121</td>
+                <td><span class="pct p-ok">23.1%</span></td>
+                <td>38,756</td>
+              </tr>
+              <tr data-burn="27.4" data-flag="">
+                <td>Support Costs</td>
+                <td>62,151</td><td>17,008</td><td>0</td>
+                <td><span class="pct p-ok">27.4%</span></td>
+                <td>45,143</td>
+              </tr>
+              <tr data-burn="999" data-flag="over" class="row-err">
+                <td class="val-red">Workshop Expenses ⚠</td>
+                <td>0</td><td>5,731</td><td>0</td>
+                <td><span class="pct p-over">N/A</span></td>
+                <td class="val-red">(5,731)</td>
+              </tr>
+              <tr data-burn="78.2" data-flag="highburn">
+                <td>Common Svcs (DSC)</td>
+                <td>23,050</td><td>18,029</td><td>0</td>
+                <td><span class="pct p-warn">78.2%</span></td>
+                <td>5,021</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>TOTAL</td>
+                <td>950,017</td><td>262,104</td><td>137,120</td>
+                <td><span class="pct p-ok">27.6%</span></td>
+                <td>550,793</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <p class="tbl-note">* Non-Exp. Equip. (5025): Hard commitments $34,646 exceed budget $12,352 by $22,294.</p>
+      </div>
+    </div><!-- /right-col -->
+  </div><!-- /main-grid -->
+</div><!-- /db-body -->
+
+<!-- ░░ STATUS BAR ░░ -->
+<div class="status-bar">
+  <span class="s-src">📄 Source: FI 102 – TF Financial Statement | TF5C35TZ24481 | 22-Sep-2026</span>
+  <div class="s-alerts">
+    <span class="s-alert">Training (5023): $14,420 actuals vs $2,215 budget — 651% burn</span>
+    <span class="s-alert">Non-Exp. Equip. (5025): Hard commits $34,646 exceed budget by $22,294</span>
+    <span class="s-alert">Workshop (5031): $5,731 spent against $0 budget</span>
+  </div>
+  <span class="s-right">D4DAT Joint Programme | September 2026</span>
+</div>
+
+<script>
+(function () {
+  /* ── theme detection ── */
+  function isDark() {
+    const t = document.documentElement.dataset.theme;
+    if (t === 'dark') return true;
+    if (t === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  const dark     = isDark();
+  const gridCol  = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const tickCol  = dark ? '#5a8a6e' : '#7a9a85';
+  const donutBg  = dark ? '#1e3828' : '#d9e5e0';
+
+  /* ── raw data ── */
+  const ROWS = [
+    { label:'Consultants',       budget: 89636, actuals: 82180, commits:  5612, burn: 91.7 },
+    { label:'Contracts',         budget:452248, actuals:     0, commits: 90000, burn:  0.0 },
+    { label:'Travel',            budget:134866, actuals: 95127, commits:  2165, burn: 70.5 },
+    { label:'Training',          budget:  2215, actuals: 14420, commits:     0, burn:651.0 },
+    { label:'Exp. Proc.',        budget: 78832, actuals:  6890, commits:  4576, burn:  8.7 },
+    { label:'Non-Exp. Equip.',   budget: 12352, actuals:     0, commits: 34646, burn:  0.0 },
+    { label:'Tech. Support',     budget: 44128, actuals: 11057, commits:     0, burn: 25.1 },
+    { label:'Gen. Operating',    budget: 50539, actuals: 11662, commits:   121, burn: 23.1 },
+    { label:'Support Costs',     budget: 62151, actuals: 17008, commits:     0, burn: 27.4 },
+    { label:'Workshop',          budget:     0, actuals:  5731, commits:     0, burn:999.0 },
+    { label:'Common Svcs (DSC)', budget: 23050, actuals: 18029, commits:     0, burn: 78.2 },
+  ];
+
+  const labels   = ROWS.map(r => r.label);
+  const budgets  = ROWS.map(r => r.budget);
+  const actuals  = ROWS.map(r => r.actuals);
+  const commits  = ROWS.map(r => r.commits);
+
+  /* ── BAR CHART ── */
+  const barCtx = document.getElementById('barChart').getContext('2d');
+
+  const barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Budget',      data: budgets, backgroundColor: dark?'rgba(74,222,128,.7)':'rgba(134,239,172,.85)', borderRadius:3 },
+        { label:'Actuals',     data: actuals, backgroundColor: dark?'rgba(16,185,129,.9)':'rgba(4,120,87,.9)',     borderRadius:3 },
+        { label:'Commitments', data: commits, backgroundColor: 'rgba(251,146,60,.85)', borderRadius:3 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{
+          callbacks:{
+            label: ctx => ` ${ctx.dataset.label}: $${ctx.raw.toLocaleString()}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks:{ color:tickCol, font:{size:10}, maxRotation:30, minRotation:15 }, grid:{ display:false } },
+        y: {
+          ticks:{ color:tickCol, font:{size:10}, callback: v => v>=1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}` },
+          grid:{ color:gridCol }
+        }
+      }
+    }
+  });
+
+  /* ── DONUT CHART ── */
+  new Chart(document.getElementById('donutChart'), {
+    type:'doughnut',
+    data:{
+      datasets:[{
+        data:[27.6, 72.4],
+        backgroundColor:['#dc2626', donutBg],
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:true, cutout:'72%',
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+      events:[]
+    }
+  });
+
+  /* ── FILTER: Period ── */
+  const periodInfo = document.getElementById('periodInfo');
+  const periodMeta = {
+    full: 'Run: 22-Sep-2026 · Period: Nov 1997 – Dec 2030',
+    2026: 'Run: 22-Sep-2026 · Period: Jan 2026 – Sep 2026 (YTD)',
+    2025: 'Run: 22-Sep-2026 · Period: Jan 2025 – Dec 2025 (FY)',
+  };
+
+  document.querySelectorAll('[data-period]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      periodInfo.textContent = periodMeta[btn.dataset.period];
+    });
+  });
+
+  /* ── FILTER: Items (table rows) ── */
+  function applyRowFilter(mode) {
+    const rows = document.querySelectorAll('#tbl-body tr');
+    rows.forEach(row => {
+      const burn = parseFloat(row.dataset.burn);
+      const flag = row.dataset.flag;
+      let show = true;
+      if (mode === 'overbudget') show = flag === 'over';
+      if (mode === 'highburn')   show = burn >= 70;
+      row.classList.toggle('row-hidden', !show);
+    });
+  }
+
+  document.querySelectorAll('[data-items]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-items]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyRowFilter(btn.dataset.items);
+    });
+  });
+
+  /* ── FILTER: Chart view ── */
+  function applyChartView(mode) {
+    const ds = barChart.data.datasets;
+    if (mode === 'actuals') {
+      ds[0].hidden = true;
+      ds[1].hidden = false;
+      ds[2].hidden = true;
+    } else if (mode === 'exposure') {
+      ds[0].hidden = false;
+      ds[1].hidden = true;
+      ds[2].hidden = false;
+    } else {
+      ds[0].hidden = false;
+      ds[1].hidden = false;
+      ds[2].hidden = false;
+    }
+    barChart.update();
+  }
+
+  document.querySelectorAll('[data-chart]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-chart]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyChartView(btn.dataset.chart);
+    });
+  });
+
+})();
+</script>
