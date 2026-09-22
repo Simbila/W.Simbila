@@ -105,12 +105,17 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html { height: 100%; }
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--bg);
     color: var(--text-pri);
     font-size: 14px;
     line-height: 1.5;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── HEADER ── */
@@ -218,14 +223,14 @@
   }
 
   /* ── BODY ── */
-  .db-body { padding: 18px 24px; }
+  .db-body { padding: 12px 20px; flex: 1; }
 
   /* ── KPI TILES ── */
   .kpi-row {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
   .kpi-card {
@@ -283,7 +288,7 @@
   .right-col { display: flex; flex-direction: column; gap: 14px; }
 
   /* ── BAR CHART ── */
-  .chart-wrap { position: relative; height: 255px; }
+  .chart-wrap { position: relative; height: 230px; }
 
   .chart-leg {
     display: flex;
